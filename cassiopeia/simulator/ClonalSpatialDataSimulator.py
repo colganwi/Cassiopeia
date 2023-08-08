@@ -115,7 +115,7 @@ class ClonalSpatialDataSimulator(SpatialDataSimulator):
             Networkx graph
         """
         distances = neighbors.kneighbors_graph(points, k, mode='distance')
-        G = nx.from_scipy_sparse_matrix(distances)
+        G = nx.from_scipy_sparse_array(distances)
         return G
 
     @classmethod
