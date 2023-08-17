@@ -13,4 +13,5 @@ from .UPGMASolver import UPGMASolver
 from .VanillaGreedySolver import VanillaGreedySolver
 from .SpectralNeighborJoiningSolver import SpectralNeighborJoiningSolver
 from .CCPhyloSolver import CCPhyloSolver
+from .FastTreeSolver import FastTreeSolver
 from . import dissimilarity_functions as dissimilarity

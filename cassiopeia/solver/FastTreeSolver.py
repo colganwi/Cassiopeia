@@ -50,6 +50,10 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
                 6: E
                 7: G
                 8: H
+        maximum_likelihood: Whether or not to use maximum likelihood when
+            inferring the tree.
+        minimum_evolution: Whether or not to use minimum evolution NNIs
+            and SPRs when inferring the tree.
     """
 
     def __init__(
@@ -59,6 +63,8 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
         add_root: bool = False,
         initial_tree_solver: Optional[CassiopeiaSolver.CassiopeiaSolver] = None,
         transition_matrix: Optional[pd.DataFrame] = None,
+        maximum_likelihood: bool = False,
+        minimum_evolution: bool = False,
     ):
 
         super().__init__()
@@ -85,6 +91,8 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
         else:
             self.transition_matrix = self._setup_transition_matrix(self.mutation_rate, self.number_of_states)
         self.edit_distance = self._setup_edit_distance(self.number_of_states)
+        self.maximum_likelihood = maximum_likelihood
+        self.minimum_evolution = minimum_evolution
 
     def solve(
         self,
@@ -126,6 +134,13 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
             # get tree path
             tree_path = os.path.join(temp_dir, "tree.nwck")
 
+            # set additional parameters
+            additional_params = ""
+            if not self.maximum_likelihood:
+                additional_params += " -noml"
+            if not self.minimum_evolution:
+                additional_params += " -nome"
+
             # if initial tree solver is not None run FastTree on initial tree
             if not self.initial_tree_solver is None:
                 initial_tree = cassiopeia_tree.copy()
@@ -135,6 +150,7 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
                 with open(initial_tree_path, "w") as f:
                     f.write(utilities.to_newick(initial_tree.get_tree_topology()))
                 command = (f". ~/.bashrc && FastTree -nosupport -trans {transition_matrix_path}"
+                        + additional_params + 
                         f" -matrix {edit_distance_path}"
                         f" -intree {initial_tree_path}"
                         f" {character_matrix_path} > {tree_path}")
@@ -142,6 +158,7 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
             # else run FastTree
             else:
                 command = (f". ~/.bashrc && FastTree -nosupport -trans {transition_matrix_path}"
+                        + additional_params +
                         f" -matrix {edit_distance_path}"
                         f" {character_matrix_path} > {tree_path}")
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -183,7 +200,9 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
     def _setup_transition_matrix(
         self, mutation_rate: float, number_of_states: int
     ) -> None:
-        """Creates the transition_matrix using the mutation rate and number 
+        """Sets up the solver.
+
+        Creates the transition_matrix using the mutation rate and number 
         of character states. Assumes that all transitions to valid states 
         are equally likely.
 
@@ -200,7 +219,7 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
         # Low probability of transition from unedited to invalid state
         Q[number_of_states:20,0] = np.ones(20 - number_of_states)*np.log(1+tol)
         # Probability of transitioning from unedited to edited
-        Q[1:number_of_states,0] = np.ones(8)*np.sum(Q[:,0])*-1/(number_of_states-1)
+        Q[1:number_of_states,0] = np.ones(number_of_states-1)*np.sum(Q[:,0])*-1/(number_of_states-1)
         # Low probability of transitioning between edited states
         Q[0:20,1:20] = np.ones((20,19))*np.log(1-tol)*-1/19
         # High probability of staying in edited state
@@ -220,12 +239,6 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
     def _save_transition_matrix(
         self, transition_matrix: pd.DataFrame,output_file: str
     ) -> None:
-        """Saves the transition matrix in Whelan and Goldman format.
-
-        Args:
-            transition_matrix: Transition matrix to save.
-            out_file: Output file path.
-        """
         with open(output_file, 'w') as f:
             f.write("\t".join(self.aas + ["*"])+"\n")
             for i in range(20):
@@ -256,14 +269,6 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
     def _setup_edit_distance(
         self, number_of_states: int
     ) -> Dict:
-        """Creates the edit distance matrix using the number of character states.
-        Assumes that all transitions to valid states are equally likely. Also
-        calculated the eigenvectors and eigenvalues of the edit distance matrix
-        which are needed to run FastTree.
-
-        Args:
-            number_of_states: Number of character states.
-        """
         distances = np.random.uniform(-.5,.5,(20,20))
         distances = distances @ distances.T
         used = np.ones((number_of_states,number_of_states)) * 2
@@ -281,13 +286,6 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
     def _save_character_matrix_fasta(
             self, character_matrix: pd.DataFrame,output_file: str
         ) -> None:
-         """Converts and integer character matrix into amino acid sequences and
-            saves as a fasta file.
-
-        Args:
-            character_matrix: Character matrix to save.
-            out_file: Output file path.
-        """
         with open(output_file, 'w') as f:
             for i in range(character_matrix.shape[0]):
                 aa_seq = ''.join(character_matrix.iloc[i].map(self.num_to_aa))
@@ -296,13 +294,6 @@ class FastTreeSolver(CassiopeiaSolver.CassiopeiaSolver):
     def _save_edit_distance(
             self, edit_distance: Dict,output_file: str
         ) -> None:
-        """Saves the edit distance as three files: .distances, .inverses,
-        and .eigenvalues.
-
-        Args:
-            edit_distance: Dictionary specifying the edit distance to save.
-            out_file: Output file path.
-        """
         with open(output_file + ".distances", 'w') as f:
             f.write("\t".join(self.aas)+"\n")
             for i in range(20):
