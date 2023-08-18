@@ -17,7 +17,7 @@ from cassiopeia.mixins import DistanceSolverError
 from cassiopeia.solver import DistanceSolver, dissimilarity_functions
 
 
-class UPGMASolver(DistanceSolver.DistanceSolver):
+class UPGMASolver(CCPhyloSolver.CCPhyloSolver):
     """
     UPGMA CassiopeiaSolver.
 
@@ -77,6 +77,8 @@ class UPGMASolver(DistanceSolver.DistanceSolver):
             dissimilarity_function=dissimilarity_function,
             add_root=True,
             prior_transformation=prior_transformation,
+            fast = fast,
+            method = "upgma"
         )
 
         self.__cluster_to_cluster_size = defaultdict(int)

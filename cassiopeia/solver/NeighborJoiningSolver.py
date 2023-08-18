@@ -16,6 +16,7 @@ from cassiopeia.data import CassiopeiaTree
 from cassiopeia.mixins import DistanceSolverError
 from cassiopeia.solver import (
     DistanceSolver,
+    CCPhyloSolver,
     dissimilarity_functions,
     solver_utilities,
 )
@@ -29,6 +30,7 @@ class NeighborJoiningSolver(DistanceSolver.DistanceSolver):
     `solve` method, but implements its own procedure for finding cherries by
     minimizing the Q-criterion between samples. If fast is set to True, 
     a fast NJ implementation of is used.
+
 
     Args:
         dissimilarity_function: A function by which to compute the dissimilarity
@@ -53,6 +55,7 @@ class NeighborJoiningSolver(DistanceSolver.DistanceSolver):
                 Neighbor-Joining algorithm described by Clausen (2023). 
                 Solution is not guaranteed to be exact.
             "ccphylo_nj": CCPhylo implementation of the Neighbor-Joining.
+
 
     Attributes:
         dissimilarity_function: Function used to compute dissimilarity between
@@ -91,6 +94,8 @@ class NeighborJoiningSolver(DistanceSolver.DistanceSolver):
             dissimilarity_function=dissimilarity_function,
             add_root=add_root,
             prior_transformation=prior_transformation,
+            fast = fast,
+            method = "nj"
         )
 
     def root_tree(
